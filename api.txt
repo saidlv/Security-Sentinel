@@ -1,0 +1,65 @@
+POST /analysis_upload
+request:
+    -	payload: app package binary
+    -	data: {"identifier": "<uniq identifier based on serial number of the phone>",
+               "authenticator": "<auth string from the heartbeat reply>",
+               "name": "<app name>",
+               "provider": "<package provider if possible ?>",
+               "version": "<package version if psosible ?>",
+               "md5": "<md5 hash of the package payload>",
+               "sha1": "<sha1 hash of the package payload>",
+               "sha256": "<sha256 hash of the package payload>",}
+reply : 
+    -   {"status": 1,              # 0 means the payload must be sent, 1 for pending, 2 for processing, 3 for done
+         "action": 1,              # 1: benin app, 0: malicious app
+         "timestamp": 1660000000}  # timestamp of the analysis date
+         
+POST /analysis
+    Same as POST but without sending the payload,
+    When a package has to be analyzed, we first use the GET request to check if the analysis result is already known
+        If we receive status: 0, use the POST to send the payload,
+    Loop on the GET until the status is 3, and save the result.
+
+
+Heartbeat API is sent every X minutes with all the information collected by the app
+On the first heartbeat we don't have authenticator, send 0 instead, the backend will then send the authenticator to use in the reply for next requests
+
+POST /heartbeat
+request:
+    - {"identifier": "<uniq identifier based on serial number of the phone>",
+       "authenticator": "<auth string from the heartbeat reply>",
+       "key": "<string identifier extracted from the qr code>",
+       "serial": "<serial number of the phone>",
+       "number": "<phone number if possible>",
+       "os": "<android | ios>",
+       "version": "<exact version of the os>",
+       "endpoint_version": "<version of this app>",
+       "applications": [          # List of all installed applications on the phone
+         {"name": "<app name>",
+          "provider": "<package provider if possible ?>",
+          "version": "<package version>"}
+         ...
+       ],
+       "rooted": "true | false",
+       "rooted_details": "<string that give details about the root detection>",
+       "unsafe_wifi": "true | false",
+       "unsafe_wifi_details": "<string that give details about the unsafe wifi>",
+       "wifi_ssid": "<current wifi ssid>"
+      }
+       
+reply:
+    - {"authenticator": "<auth string to save to send all the requests>",
+       "heartbeat": "<int to save, this is the heartbeat delay between each heartbeat request>",
+       "vulnerabilities": [
+         {"name": "<vulnerable app name, or 'android' if it's an OS vulnerability>",
+          "provider": "<package provider if we received it>",
+          "version": "<version of the app, or the os version if it's an OS vulnerability>",
+          "score": "<float of the vulnerability score from 1 (low risk) to 10 (high risk)>",
+          "vulnerability": "<Name of the vulnerability 'CVE-2021-39619'>",
+          "release": "<timestamp of the release date of the vulnerability>",
+          "details": "<small text with some details about the vulnerability>"
+         }
+         ...
+       ]}
+          
+       
